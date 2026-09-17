@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8"/>
+  <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+  <title>Confirmação de Presença — NEPLE Oral | Fatec Franco da Rocha</title>
+
+  <link href="https://fonts.googleapis.com" rel="preconnect"/>
+  <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          colors: {
+            "indigo-700": "#4338ca",
+            "indigo-800": "#3730a3",
+            "indigo-50": "#eef2ff",
+            "emerald-600": "#059669",
+            "emerald-700": "#047857",
+            "emerald-50": "#ecfdf5",
+            "rose-600": "#e11d48",
+            "rose-700": "#be123c",
+            "rose-50": "#fff1f2",
+            "slate-50": "#f8fafc",
+            "slate-100": "#f1f5f9",
+            "slate-800": "#1e293b",
+            "slate-900": "#0f172a"
+          }
+        }
+      }
+    };
+  </script>
+
+  <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+  <script type="module">
+    import { ProvaService } from '../js/services/provas.js';
+
+    document.addEventListener('alpine:init', () => {
+      Alpine.data('confirmarPage', () => ({
+        loading: true,
+        erro: null,
+        prova: null,
+        statusAtual: null,
+        exibirJustificativa: false,
+        justificativaTexto: '',
+        mensagemSucesso: null,
+
+        async init() {
+          const params = new URLSearchParams(window.location.search);
+          const token = params.get('token') || 'f83e291a84c90e2b4';
+
+          try {
+            const data = await ProvaService.buscarPorToken(token);
+            if (!data) {
+              this.erro = 'Convocação não encontrada ou token inválido/expirado.';
+            } else {
+              this.prova = data;
+              this.statusAtual = data.status;
+            }
+          } catch (e) {
+            this.erro = 'Erro ao verificar a convocação.';
+          } finally {
+            this.loading = false;
+          }
+        },
+
+        async confirmarPresenca() {
+          try {
+            this.loading = true;
+            await ProvaService.responderToken(this.prova.token_confirmacao, true);
+            this.statusAtual = 'confirmada';
+            this.mensagemSucesso = 'Sua presença foi confirmada com sucesso! Compareça no dia e horário agendados.';
+          } catch (e) {
+            alert('Erro ao confirmar presença.');
+          } finally {
+            this.loading = false;
+          }
+        },
+
+        async recusarPresenca() {
+          if (!this.justificativaTexto.trim()) {
+            alert('Por favor, informe a justificativa para o reagendamento.');
+            return;
+          }
+          try {
+            this.loading = true;
+            await ProvaService.responderToken(this.prova.token_confirmacao, false, this.justificativaTexto);
+            this.statusAtual = 'recusada';
+            this.exibirJustificativa = false;
+            this.mensagemSucesso = 'Solicitação de recusa/reagendamento enviada. A coordenação entrará em contato.';
+          } catch (e) {
+            alert('Erro ao processar recusa.');
+          } finally {
+            this.loading = false;
+          }
+        }
+      }));
+    });
+  </script>
+
+  <style>
+    [x-cloak] { display: none !important; }
+  </style>
+</head>
+<body class="bg-slate-50 font-sans text-slate-900 min-h-screen flex flex-col justify-between" x-data="confirmarPage" x-cloak>
+
+  <!-- Header Público Simplificado -->
+  <header class="bg-white border-b border-slate-200 py-4 px-6 shadow-xs">
+    <div class="max-w-3xl mx-auto flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-9 h-9 rounded-lg bg-indigo-700 text-white flex items-center justify-center font-bold text-base">
+          N
+        </div>
+        <div>
+          <h1 class="font-bold text-slate-900 text-base leading-tight">NEPLE Oral — Fatec Franco da Rocha</h1>
+          <span class="text-xs text-slate-500">Convocação Oficial de Prova Oral de Proficiência</span>
+        </div>
+      </div>
+      <span class="text-xs px-2.5 py-1 bg-indigo-50 text-indigo-700 font-semibold rounded">Edição 2026-2</span>
+    </div>
+  </header>
+
+  <!-- Conteúdo Principal Card -->
+  <main class="flex-1 max-w-3xl w-full mx-auto p-4 sm:p-6 flex flex-col justify-center">
+
+    <!-- State Loading -->
+    <div x-show="loading" class="bg-white p-8 rounded-2xl shadow-sm border border-slate-200 text-center space-y-3">
+      <div class="w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto"></div>
+      <p class="text-slate-600 text-sm font-medium">Validando token de convocação...</p>
+    </div>
+
+    <!-- State Erro -->
+    <div x-show="!loading && erro" class="bg-white p-8 rounded-2xl shadow-sm border border-rose-200 text-center space-y-4">
+      <span class="material-symbols-outlined text-[48px] text-rose-600">error</span>
+      <h2 class="text-xl font-bold text-slate-900" x-text="erro"></h2>
+      <p class="text-sm text-slate-600">Entre em contato com a Secretaria Acadêmica da Fatec Franco da Rocha para mais esclarecimentos.</p>
+    </div>
+
+    <!-- State Card de Convocação -->
+    <div x-show="!loading && prova" class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden space-y-6 p-6 sm:p-8">
+
+      <!-- Banner Status Feedback -->
+      <template x-if="mensagemSucesso">
+        <div class="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-sm font-medium flex items-center gap-3">
+          <span class="material-symbols-outlined text-emerald-600 text-[22px]">check_circle</span>
+          <span x-text="mensagemSucesso"></span>
+        </div>
+      </template>
+
+      <!-- Dados do Aluno -->
+      <div class="border-b border-slate-100 pb-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <span class="text-xs uppercase font-semibold text-indigo-700 bg-indigo-50 px-2.5 py-1 rounded">Candidato(a) Convocado(a)</span>
+          <h2 class="text-xl font-bold text-slate-900 mt-2" x-text="prova.aluno_nome"></h2>
+          <p class="text-xs text-slate-500 font-mono mt-0.5" x-text="`RA: ${prova.ra} · ${prova.aluno_email}`"></p>
+        </div>
+        <div>
+          <span class="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wider"
+                :class="{
+                  'bg-emerald-50 text-emerald-700 border border-emerald-200': statusAtual === 'confirmada',
+                  'bg-rose-50 text-rose-700 border border-rose-200': statusAtual === 'recusada',
+                  'bg-indigo-50 text-indigo-700 border border-indigo-200': statusAtual === 'agendada'
+                }">
+            <span class="w-2 h-2 rounded-full"
+                  :class="{
+                    'bg-emerald-600': statusAtual === 'confirmada',
+                    'bg-rose-600': statusAtual === 'recusada',
+                    'bg-indigo-600': statusAtual === 'agendada'
+                  }"></span>
+            <span x-text="`Status: ${statusAtual}`"></span>
+          </span>
+        </div>
+      </div>
+
+      <!-- Detalhes do Agendamento -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+        <div class="p-4 rounded-xl bg-slate-50 border border-slate-100 space-y-1">
+          <span class="text-xs text-slate-400 font-semibold uppercase block">Data e Horário</span>
+          <div class="flex items-center gap-2 font-bold text-slate-900">
+            <span class="material-symbols-outlined text-indigo-600 text-[20px]">calendar_month</span>
+            <span x-text="`${prova.data} às ${prova.hora_inicio}`"></span>
+          </div>
+        </div>
+
+        <div class="p-4 rounded-xl bg-slate-50 border border-slate-100 space-y-1">
+          <span class="text-xs text-slate-400 font-semibold uppercase block">Local da Avaliação</span>
+          <div class="flex items-center gap-2 font-bold text-slate-900">
+            <span class="material-symbols-outlined text-indigo-600 text-[20px]">location_on</span>
+            <span x-text="prova.sala"></span>
+          </div>
+        </div>
+
+        <div class="p-4 rounded-xl bg-slate-50 border border-slate-100 space-y-1 sm:col-span-2">
+          <span class="text-xs text-slate-400 font-semibold uppercase block">Docente Avaliador</span>
+          <div class="flex items-center gap-2 font-bold text-slate-900">
+            <span class="material-symbols-outlined text-indigo-600 text-[20px]">record_voice_over</span>
+            <span x-text="prova.avaliador_nome"></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Formulário de Recusa com Justificativa -->
+      <div x-show="exibirJustificativa" class="p-4 bg-rose-50 border border-rose-200 rounded-xl space-y-3">
+        <label class="block text-xs font-semibold text-rose-900">Informe a justificativa para o não comparecimento ou reagendamento *</label>
+        <textarea x-model="justificativaTexto" rows="3" class="w-full bg-white p-3 rounded-lg text-sm border border-rose-300 focus:outline-none focus:ring-2 focus:ring-rose-500" placeholder="Motivo do impedimento no horário agendado..."></textarea>
+        <div class="flex justify-end gap-2">
+          <button @click="exibirJustificativa = false" class="px-4 py-2 text-xs font-medium text-slate-700 bg-white rounded-lg border">Cancelar</button>
+          <button @click="recusarPresenca()" class="px-4 py-2 text-xs font-semibold text-white bg-rose-600 hover:bg-rose-700 rounded-lg">Confirmar Recusa</button>
+        </div>
+      </div>
+
+      <!-- Botões de Ação de Resposta -->
+      <div x-show="!exibirJustificativa && statusAtual === 'agendada'" class="pt-2 flex flex-col sm:flex-row items-center gap-3">
+        <button @click="confirmarPresenca()" class="w-full sm:flex-1 py-3 px-6 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl text-sm shadow-sm transition-colors flex items-center justify-center gap-2">
+          <span class="material-symbols-outlined text-[20px]">check_circle</span>
+          <span>Confirmar Presença</span>
+        </button>
+
+        <button @click="exibirJustificativa = true" class="w-full sm:w-auto py-3 px-6 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-xl text-sm transition-colors flex items-center justify-center gap-2">
+          <span class="material-symbols-outlined text-[20px]">cancel</span>
+          <span>Recusar / Reagendar</span>
+        </button>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- Rodapé Institucional -->
+  <footer class="py-4 text-center text-xs text-slate-400 border-t border-slate-200 bg-white">
+    Fatec Franco da Rocha · Centro Paula Souza (CEETEPS) · Governo do Estado de São Paulo
+  </footer>
+
+</body>
+</html>
